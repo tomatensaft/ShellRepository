@@ -9,6 +9,7 @@ email="marco_unterberger@gmx.at"
 token="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"
 repository="ShellRepository"
 
+#Test
 #Pull Option
 #git config pull.ff only 
 git config pull.rebase true 
@@ -44,7 +45,7 @@ case "$1" in
     printf "Init Git global data...\n"
     git config --global user.name=${username}
     git config --global user.email=${email}
-    git config --global user.password=${token}
+    #git config --global user.password=${token}
     ;;
 
     "-push")
