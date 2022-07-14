@@ -1,0 +1,5 @@
+Create Shared LIB Link
+shlib="${shlib-"/usr/local/bin/shlib"}"
+
+Set Parameter at the beginning of the script
+Use Input-Prameters $1 and so on

@@ -8,7 +8,7 @@
 <h3 align="center">Shellscript examples</h3>
 
   <p align="center">
-    Shellscript examples for FreeBsd/TcBsd
+    Shellscript Posix examples for FreeBsd/TcBsd
     <br />
     <a href="https://github.com/tomatensaft/ShellRepository"><strong>Explore the docs »</strong></a>
     <br />

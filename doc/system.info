@@ -1,0 +1,15 @@
+ enable virtualbox additions if we detect virtualbox
+if sysctl -a | grep VBOX; then
+	/bin/sh /usr/local/share/examples/bhf/enable-vboxguest.sh
+fi
+
+# and start ...
+sysctl -w kern.evdev.rcpt_mask=6
+kldload /boot/modules/i915kms.ko
+kldload cuse
+service devd restart
+service dbus start
+service sddm start
+
+
+env ASSUME_ALWAYS_YES=YES
