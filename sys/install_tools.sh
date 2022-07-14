@@ -4,16 +4,14 @@
 
 # install some useful tools
 env ASSUME_ALWAYS_YES=YES pkg install \
-	TwinCAT-SDK-internal_4024 \
 	bash \
 	cmake \
 	fish \
-	fusefs-sshfs \
+	fusefs-sshfs \ # ntfs
 	gcc \
 	gdb \
 	git \
 	htop \
-	jevops-internal \
 	joe \
 	jq \
 	llvm \
