@@ -1,8 +1,13 @@
 #!/bin/sh
 #PDX-License-Identifier: MIT
 
+#Check Root Access
+
 if [ $(id -u) -ne 0 ]; then
-	throw "Usage: run '$0' as root.\n"
+	printf "Usage: run '$0' as root.\n"
+	#Failed
+	return 1
 fi
 
-#return Paraneter
+#Succeeded
+return 0

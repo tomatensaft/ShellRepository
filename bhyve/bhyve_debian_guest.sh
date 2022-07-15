@@ -2,29 +2,95 @@
 # SPDX-License-Identifier: MIT
 
 
-pkg install uefi-edk2-bhyve-bhf
+#Install Debian Bhyve Guest
 
+#Print Header
+printf "-----------------------------"
+printf "|                           |"
+printf "|  Exmaple Bhyve Debian     |"
+printf "|  Adjust Params in Script  |"
+printf "|                           |"
+printf "-----------------------------"
+
+#Check Root
+if [ $(id -u) -ne 0 ]; then
+	printf "Usage: run '$0' as root.\n"
+	return 1
+fi
+
+#Check Bhyve
+if command -v bhyve >/dev/null 2>&1 ; then
+    printf "Bhyve Grub Program Found...\n"
+else
+    printf "Bhyve Grub Program Not Found...\n"
+    exit 1
+fi 
+
+#Check Grub Uefi Loader
+if pkg info grub2-bhyve | grep bhyve; then
+    printf "Bhyve Grub Uefi Loader Found...\n"
+else
+    pkg install -y grub2-bhyve 
+fi
+
+#Check Kernel Modules
+if kldstat | grep vmm; then
+    printf "Kernel Module vmm found"
+else
+    printf "Load Kernel module vmm"
+    kldload vmm
+    #exit 1
+fi
+
+#Params - Adjust if needed
 iso_file="$(pwd)/debian-installer.iso"
-fetch -o "${iso_file}" https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-11.2.0-amd64-netinst.iso
-
+debian_file= "debian-11.4.0-amd64-netinst.iso"
 vm_disk="zroot/debian-vm_disk0"
-doas zfs create -V 10G -o volmode=dev ${vm_disk}
-
-nic="igb1" # adjust according to you local setup
 vnc_port="5900"
-tap="$(doas ifconfig tap create)"
-bridge="$(doas ifconfig bridge create)"
-doas sysctl net.link.tap.up_on_open=1
-doas ifconfig ${bridge} addm ${tap} addm ${nic} up
-doas sysctl net.link.bridge.pfil_member=0
-temp_firewall_rules="$(mktemp)"
-echo "pass in quick on ${bridge}" >> "${temp_firewall_rules}"
-echo "pass in quick proto tcp to port ${vnc_port}" >> "${temp_firewall_rules}"
-doas pfctl -a bhf/bhyve/debian-vm -f "${temp_firewall_rules}"
+nic="wlan0" 
 
-dias kldload -n vmm
+#Get IsoFiles
+printf "Fetch Debian Iso File ${debian_file}..\n"
+fetch -o "${iso_file}" "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/${debian_file}"
 
+#Check zroot disk exists
+if zfs list | grep vm_disk; then
+    printf "zfs disk found"
+else    
+    printf "zfs create disk ${vm_disk}"    
+    zfs create -V 10G -o volmode=dev ${vm_disk}
+fi
 
+#Load Nic
+. bhyve_net_config.sh $nic
+if [ $? -eq 1]; then
+    printf "Problem Creating Nic Bridge"
+    exit 1
+else
+    create_bridge    
+fi
+
+return 0;
+
+#Start Bhyve Debian Guest
+#2 Cores / 2 GigRAM / VirtIO / Uefi
+install_debian_guest() 
+{
+    bhyve -c 2 -m 2G \
+    -A -H \
+    -l bootrom,/usr/local/share/uefi-firmware/BHYVE_BHF_UEFI.fd \
+    -s 0:0,hostbridge \
+    -s 1:0,virtio-blk,/dev/zvol/"${vm_disk}" \
+    -s 2:0,virtio-net,"${tap}" \
+    -s 10:0,ahci-cd,"${iso_file}" \
+    -s 29,fbuf,tcp=0.0.0.0:"${vnc_port}",w=1024,h=768,wait \
+    -s 30,xhci,tablet \
+    -s 31:0,lpc \
+    debian-vm
+}
+
+start_debian_guest() 
+{
 doas bhyve -c 2 -m 2G \
 -A -H \
 -l bootrom,/usr/local/share/uefi-firmware/BHYVE_BHF_UEFI.fd \
@@ -36,28 +102,10 @@ doas bhyve -c 2 -m 2G \
 -s 30,xhci,tablet \
 -s 31:0,lpc \
 debian-vm
+}
 
+destroy_debian_guest() 
+{
+    bhyvectl --vm=debian-vm --destroy
+}
 
-
--Start
-doas bhyve -c 2 -m 2G \
--A -H \
--l bootrom,/usr/local/share/uefi-firmware/BHYVE_BHF_UEFI.fd \
--s 0:0,hostbridge \
--s 1:0,virtio-blk,/dev/zvol/"${vm_disk}" \
--s 2:0,virtio-net,"${tap}" \
--s 10:0,ahci-cd,"${iso_file}" \
--s 29,fbuf,tcp=0.0.0.0:"${vnc_port}",w=1024,h=768,wait \
--s 30,xhci,tablet \
--s 31:0,lpc \
-debian-vm
-
-
-doas bhyvectl --vm=debian-vm --destroy
-
-doas ifconfig ${bridge} deletem ${tap} deletem ${nic}
-doas ifconfig ${bridge} down
-doas ifconfig ${bridge} destroy
-doas ifconfig ${tap} destroy
-doas pfctl -a bhf/bhyve/debian-vm -f /dev/null
-doas rm "${temp_firewall_rules}"
