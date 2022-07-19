@@ -13,3 +13,10 @@ service sddm start
 
 
 env ASSUME_ALWAYS_YES=YES
+
+
+#Auslager in Sys LIB
+#https://google.github.io/styleguide/shellguide.html
+err() {
+  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
+}
